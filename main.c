@@ -9,14 +9,18 @@
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h> // complex.h は fftw3.h より先に include する
-#include <fftw3.h>   // windows環境では #include "C:/path/to/fftw3.h"
+#include "fftw3.h"   // windows環境では #include "C:/path/to/fftw3.h"
                      // あるいは        #include "./相対パス/fftw3.h"
 
-int main(void)
+int main(int argc, char *argv[])
 {
 
-    int N = 361;
     int i = 0;
+
+    //FFTのポイント数
+    int N = atoi(argv[1]);
+    //サンプリング周波数
+    float fs = atoi(argv[2]);
 
     // a,b は double _Complex 型のC99標準複素配列と実質的に同じ
     // double _Complex a[4] としても動くけど計算速度が低下する可能性あり
@@ -32,7 +36,8 @@ int main(void)
 
     // データ読み込み
     FILE *fp; // FILE型構造体
-    char fname[] = "sample_sin.csv";
+    //char fname[] = "sample_sin.csv";
+    char *fname = argv[3];
     //char fname[] = "sin.csv";
     char str[N];
 
@@ -64,10 +69,13 @@ int main(void)
     fp = fopen("output.csv", "w");
     // b[n]の値を表示
     int n;
-    for (n = 1; n < N; n++)
+    fprintf(fp, "f[Hz],Apm.,Phase[deg]\n");
+    for (n = 1; n < N/2; n++)
     {
         //printf("%+lf,%+lf\n", creal(b[n]), cimag(b[n]));
-        fprintf(fp, "%+lf,%+lf,%+lf,%+lf\n", creal(b[n]) / N * 2, cimag(b[n]) / N * 2, sqrt(pow(creal(b[n]) / N * 2, 2) + pow(cimag(b[n]) / N * 2, 2)), atan2(creal(b[n]), cimag(b[n])));
+        //fprintf(fp, "%+lf,%+lf,%+lf,%+lf\n", creal(b[n]) / N * 2, cimag(b[n]) / N * 2, sqrt(pow(creal(b[n]) / N * 2, 2) + pow(cimag(b[n]) / N * 2, 2)), atan2(creal(b[n]), cimag(b[n])));
+        fprintf(fp, "%+lf,%+lf,%+lf\n", (float)fs/N*n, sqrt(pow(creal(b[n]) / N * 2, 2) + pow(cimag(b[n]) / N * 2, 2)), atan2(cimag(b[n]) / N * 2, creal(b[n]) / N * 2)*180.0/M_PI);
+
     }
     fclose(fp);
 
@@ -77,7 +85,7 @@ int main(void)
 
     // 計算終了時、メモリ開放を忘れないように
     if (plan)
-        fftw_destroy_plan(plan);
+    fftw_destroy_plan(plan);
     fftw_free(a);
     fftw_free(b);
 
