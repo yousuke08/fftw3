@@ -2,6 +2,7 @@ import numpy as np
 import PySimpleGUI as sg
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pyfftw
 
 #plot用の変数
 CSVpath = ""
@@ -23,17 +24,23 @@ def draw_figure(canvas, figure):
 
 def loadCSV(targetCSV):
     npArray = np.genfromtxt(targetCSV, delimiter=",", encoding='utf8', dtype='float')
-    print(npArray)
     x = npArray.T[0]
     y = npArray.T[1]
-    print(x)
-    print(y)
     ax.plot(x, y, alpha=0.4)
+    runFFT(y)
+
+def runFFT(timeData):
+    a = pyfftw.empty_aligned(len(timeData), dtype='complex128', n=16)
+    a[:] = timeData + 0j
+    b = pyfftw.interfaces.numpy_fft.fft(a)
+    c = np.fft.fft(a)
+    ax2.plot(abs(c), alpha=0.4)
+    np.allclose(b, c)
 
 # レイアウト作成
-mainWindow = [[sg.Text("ファイル選択"), sg.Input(key="-FILEPATH-", enable_events=True), sg.FileBrowse()],
+mainWindow = [[sg.Text("ファイル選択"), sg.Input(key="-FILEPATH-", enable_events=True), sg.FileBrowse( file_types = (('*.csv', '*.CSV')))],
               [sg.Canvas(key='-CANVAS-'), sg.Canvas(key='-CANVAS2-')],
-              [sg.Button("Add", key='-RUN-', disabled=True), sg.Button("Clear")]]
+              [sg.Button("Run", key='-RUN-', disabled=True), sg.Button("Clear")]]
 
 subWindow = [[sg.Text('Embed Matplotlib Plot')]]
 
@@ -46,12 +53,15 @@ window = sg.Window('Demo Application - Embedding Matplotlib In PySimpleGUI', lay
 # 埋め込む用のfigを作成する．
 fig = plt.figure(figsize=(4, 3))
 ax = fig.add_subplot(111)
-ax.set_ylim(-10, 10)
+ax.set_ylim(-2, 2)
+fig2 = plt.figure(figsize=(4, 3))
+ax2 = fig2.add_subplot(111)
+ax2.set_ylim(-10, 10)
 
 
 # figとCanvasを関連付ける．
 fig_agg = draw_figure(window['-CANVAS-'].TKCanvas, fig)
-fig_agg2 = draw_figure(window['-CANVAS2-'].TKCanvas, fig)
+fig_agg2 = draw_figure(window['-CANVAS2-'].TKCanvas, fig2)
 
 # イベントループ
 while True:
@@ -69,6 +79,7 @@ while True:
     
     elif event == "Clear":
         ax.cla()
+        ax2.cla()
         fig_agg.draw()
         fig_agg2.draw()
 
