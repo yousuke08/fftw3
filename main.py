@@ -42,8 +42,8 @@ def runFFT(timeData):
     ax2.set_xlim(0, 5)
     np.allclose(b, c)
 
-frameTime = [[sg.Canvas(key='-CANVAS-', size=(500,300))]]
-frameFreq = [[sg.Canvas(key='-CANVAS2-', size=(500,300))]]
+frameTime = [[sg.Canvas(key='-CANVAS-', size=(400,300))]]
+frameFreq = [[sg.Canvas(key='-CANVAS2-', size=(400,300))]]
 
 # レイアウト作成
 mainWindow = [[sg.Text("ファイル選択"), sg.Input(key="-FILEPATH-", enable_events=True), sg.FileBrowse( file_types = (('*.csv', '*.CSV'),))],
@@ -61,11 +61,11 @@ window = sg.Window('Demo Application - Embedding Matplotlib In PySimpleGUI', lay
 # 埋め込む用のfigを作成する．
 plt.rcParams["font.size"] = 6
 plt.tight_layout()
-fig = plt.figure()
+fig = plt.figure(figsize=(4,3))
 fig.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0.15, hspace=0.15)
 ax = fig.add_subplot(111)
 ax.set_ylim(-2, 2)
-fig2 = plt.figure()
+fig2 = plt.figure(figsize=(4,3))
 fig2.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0.15, hspace=0.15)
 ax2 = fig2.add_subplot(111)
 ax2.set_ylim(0, 2)
