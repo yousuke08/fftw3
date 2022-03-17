@@ -42,8 +42,10 @@ def runFFT(timeData):
     ax2.set_xlim(0, 5)
     np.allclose(b, c)
 
-frameTime = [[sg.Canvas(key='-CANVAS-', size=(400,300))]]
-frameFreq = [[sg.Canvas(key='-CANVAS2-', size=(400,300))]]
+frameTime = [[sg.Canvas(key='-CANVAS-', size=(400, 300))],
+             [sg.Slider(range=(1, 100), default_value=1, resolution=1, orientation='h', size=(34.3, 15), enable_events=True, key='slider')]]
+frameFreq = [[sg.Canvas(key='-CANVAS2-', size=(400, 300))],
+             [sg.Slider(range=(1, 100), default_value=1, resolution=1, orientation='h', size=(34.3, 15), enable_events=True, key='slider2')]]
 
 # レイアウト作成
 mainWindow = [[sg.Text("ファイル選択"), sg.Input(key="-FILEPATH-", enable_events=True), sg.FileBrowse( file_types = (('*.csv', '*.CSV'),))],
@@ -96,6 +98,14 @@ while True:
 
     elif event == "-FILEPATH-":
         window.find_element('-RUN-').Update(disabled=False)
+
+    elif event == "slider":
+        ax.set_xlim(0, values["slider"])
+        fig_agg.draw()
+
+    elif event == "slider2":
+        ax2.set_xlim(0, values["slider2"])
+        fig_agg2.draw()
 
 # ウィンドウを閉じる．
 window.close()
