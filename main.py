@@ -33,8 +33,14 @@ def loadCSV(targetCSV):
     runFFT(y)
 
 def runFFT(timeData):
+    near2pow = 2**len(str(bin(int(700)))[2:])   #最も近い2のべき乗
+    a = pyfftw.empty_aligned(near2pow, dtype='complex128', n=16)
     print(len(timeData))
-    a = pyfftw.empty_aligned(len(timeData), dtype='complex128', n=16)
+    print(near2pow)
+    print((int((near2pow - len(timeData)) / 2 + 0.5)) + (int((near2pow - len(timeData)) / 2)))
+    print(type(timeData))
+    np.insert(timeData, 0, [50]*(int((near2pow - len(timeData)) / 2 + 0.5)))
+    print(timeData)
     a[:] = timeData + 0j
     b = pyfftw.interfaces.numpy_fft.fft(a)
     c = np.fft.fft(a)
