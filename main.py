@@ -1,117 +1,78 @@
-from time import time
+import os,shutil,locale,json,io
 import numpy as np
-import PySimpleGUI as sg
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import PySimpleGUI as sg
 import pyfftw
 
-#plot用の変数
-CSVpath = ""
+freq = 5
 
-# GUIがぼやける現象を防ぐための関数
-def make_dpi_aware():
-  import ctypes
-  import platform
-  if int(platform.release()) >= 8:
-    ctypes.windll.shcore.SetProcessDpiAwareness(True)
-#make_dpi_aware()
+def make_data_fig(data, type):
 
+    fig = plt.figure(figsize=(4,3))
+    # x = np.linspace(0, 2*np.pi, 500)
+    x = np.arange(0, len(data))
+    ax = fig.add_subplot(111)
+    if type == 'Time':
+        ax.plot(x, data, marker='.')
+        ax.set_xlim(0,len(data))
+    else:
+        ax.plot(x, data, marker='.')
+        ax.set_xlim(0,len(data)/2)
+    return fig
 
-# 描画用の関数
-def draw_figure(canvas, figure):
-    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
-    figure_canvas_agg.draw()
-    figure_canvas_agg.get_tk_widget().pack(side='top', fill='both', expand=1)
-    return figure_canvas_agg
+def draw_plot_image(fig):
+    item = io.BytesIO()
+    plt.savefig(item, format='png')
+    plt.clf()
+    # plt.close('all')
+    return item.getvalue()
 
+sg.theme('Light Blue 2')
 
-def loadCSV(targetCSV):
-    npArray = np.genfromtxt(targetCSV, delimiter=",", encoding='utf8', dtype='float')
-    x = npArray.T[0]
-    y = npArray.T[1]
-    ax.plot(x, y, alpha=0.4)
-    runFFT(y)
+a = pyfftw.empty_aligned(128, dtype='complex128', n=16)
+a[:] = [np.sin(freq*np.pi*2*i/128)+np.sin(freq*3*np.pi*2*i/128) for i in range(128)]
+b = pyfftw.interfaces.numpy_fft.fft(a)
+c = np.fft.fft(a)
+np.allclose(b, c)
 
-def runFFT(timeData):
-    near2pow = 2**len(str(bin(int(700)))[2:])   #最も近い2のべき乗
-    a = pyfftw.empty_aligned(near2pow, dtype='complex128', n=16)
-    print(len(timeData))
-    print(near2pow)
-    print((int((near2pow - len(timeData)) / 2 + 0.5)) + (int((near2pow - len(timeData)) / 2)))
-    print(type(timeData))
-    np.insert(timeData, 0, [50]*(int((near2pow - len(timeData)) / 2 + 0.5)))
-    print(timeData)
-    a[:] = timeData + 0j
-    b = pyfftw.interfaces.numpy_fft.fft(a)
-    c = np.fft.fft(a)
-    ax2.plot(abs(c)/len(timeData)*2, alpha=0.4)
-    ax2.set_xlim(0, 5)
-    np.allclose(b, c)
+var = [[x + 9 * y for x in range (9)] for y in range (10)]
+name = [chr(65+x) for x in range (9)]
+aDis = [[0 for i in range(2)] for j in range(len(a))]
 
-frameTime = [[sg.Canvas(key='-CANVAS-', size=(400, 300))],
-             [sg.Slider(range=(1, 100), default_value=1, resolution=1, orientation='h', size=(34.3, 15), enable_events=True, key='slider')]]
-frameFreq = [[sg.Canvas(key='-CANVAS2-', size=(400, 300))],
-             [sg.Slider(range=(1, 100), default_value=1, resolution=1, orientation='h', size=(34.3, 15), enable_events=True, key='slider2')]]
+for i in range(len(a)):
+    aDis[i][0] = i
+    aDis[i][1] = round(a.real[i], 2)
 
-# レイアウト作成
-mainWindow = [[sg.Text("ファイル選択"), sg.Input(key="-FILEPATH-", enable_events=True), sg.FileBrowse( file_types = (('*.csv', '*.CSV'),))],
-              [sg.Frame(title='Waveform', layout=frameTime, border_width=7, element_justification='left'), sg.Frame(title='FFT', layout=frameFreq, border_width=7, element_justification='left')],
-              [sg.Button("Run", key='-RUN-', disabled=True), sg.Button("Clear")]]
+frameTime = [[sg.Image(filename='', key='-imageTime-', size=(400,300))]]
+frameFreq = [[sg.Image(filename='', key='-imageFreq-', size=(400,300))]]
 
-subWindow = [[sg.Text('Embed Matplotlib Plot')]]
+layout = [[sg.Text('My one-shot window.')],
+          [sg.Text("ファイル選択"), sg.InputText(), sg.FileBrowse(key="-FILES-")],
+          [sg.Text('入力欄'), sg.In(key='-IN-'), sg.Button('Read', key='-ok-')],
+          [sg.Button('Display',key='-display-'), sg.Cancel('Close',key='Cancel')],
+          [sg.Table(aDis, ['Time', 'Data'], num_rows=25), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
+         ]
 
-layout = [[sg.Column(mainWindow),
-          sg.Column(subWindow)]]
+window = sg.Window('Window Title', layout, size=(1200,800))
 
-# windowを作成する．finalize=Trueにする必要がある．
-window = sg.Window('Demo Application - Embedding Matplotlib In PySimpleGUI', layout, finalize=True, element_justification='left', size=(1200, 800))
-
-# 埋め込む用のfigを作成する．
-plt.rcParams["font.size"] = 6
-plt.tight_layout()
-fig = plt.figure(figsize=(4,3))
-fig.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0.15, hspace=0.15)
-ax = fig.add_subplot(111)
-ax.set_ylim(-2, 2)
-fig2 = plt.figure(figsize=(4,3))
-fig2.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0.15, hspace=0.15)
-ax2 = fig2.add_subplot(111)
-ax2.set_ylim(0, 2)
-
-# figとCanvasを関連付ける．
-fig_agg = draw_figure(window['-CANVAS-'].TKCanvas, fig)
-fig_agg2 = draw_figure(window['-CANVAS2-'].TKCanvas, fig2)
-
-# イベントループ
 while True:
     event, values = window.read()
-    print(event)
 
-    if event in (None, "Cancel"):
+    if event in (None, 'Cancel'):
         break
 
-    elif event == "-RUN-":
-        loadCSV(values["-FILEPATH-"])
-        # 変更を加えたあと，fig_agg.draw()で変更を反映させる．
-        fig_agg.draw()
-        fig_agg2.draw()
+    elif event == '-display-':
+        figTime = make_data_fig(a.real, 'Time')
+        figTimeBytes = draw_plot_image(figTime)
+        figFreq = make_data_fig(np.abs(b), 'Freq')
+        figFreqBytes = draw_plot_image(figFreq)
+        window['-imageTime-'].update(data=figTimeBytes)
+        window['-imageFreq-'].update(data=figFreqBytes)
     
-    elif event == "Clear":
-        ax.cla()
-        ax2.cla()
-        fig_agg.draw()
-        fig_agg2.draw()
+    elif event == '-ok-':
+        print(values['-IN-'].split)
 
-    elif event == "-FILEPATH-":
-        window.find_element('-RUN-').Update(disabled=False)
+    elif event == '-FILES-':
+        print(values['-FILES-'])
 
-    elif event == "slider":
-        ax.set_xlim(0, values["slider"])
-        fig_agg.draw()
-
-    elif event == "slider2":
-        ax2.set_xlim(0, values["slider2"])
-        fig_agg2.draw()
-
-# ウィンドウを閉じる．
 window.close()
