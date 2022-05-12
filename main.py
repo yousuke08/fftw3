@@ -65,21 +65,27 @@ class data:
         a[:] = self.waveData
         b  = pyfftw.interfaces.numpy_fft.fft(a)
         self.compFreqData = np.fft.fft(a)
-        self.freqDataAbs = np.abs(self.compFreqData)/(self.dataLen/2.0)
+        self.freqDataAbs = np.abs(self.compFreqData)/(self.dataLen)
         self.freqDataAng = np.angle(self.compFreqData, deg=True)
+    
+    def exportCSV(self):
+        np.savetxt('./output.csv', np.stack([np.array(self.freqData), self.freqDataAbs]).T, delimiter=',')
+        
+
 
 
 sg.theme('Light Blue 2')
 
 #frameTime = [[sg.Image(filename='', key='-imageTime-', size=(400, 300))]]
 frameTime = [[sg.Canvas(key='-waveCanvas-', size=(400, 300))]]
-frameFreq = [[sg.Canvas(key='-freqCanvas-', size=(400, 300))],[sg.Text('表示最大周波数'), sg.InputText(key='-freqRange-', enable_events=True, justification='right', size=(10,1)), sg.Button('Apply', key='-reloadFreqRange-', disabled=True)]]
+frameFreq = [[sg.Canvas(key='-freqCanvas-', size=(400, 300))],[sg.Text('表示最大振幅'), sg.InputText(key='-ampRange-', enable_events=True, justification='right', size=(5,1)), sg.Button('Apply', key='-reloadAmpRange-', disabled=True), sg.Text('表示最大周波数'), sg.InputText(key='-freqRange-', enable_events=True, justification='right', size=(5,1)), sg.Button('Apply', key='-reloadFreqRange-', disabled=True)]]
 
 layout = [[sg.Text('Ver_0.1', justification='right')],
           [sg.Text("ファイル選択"), sg.InputText(key="-FILEPATH-", enable_events=True), sg.FileBrowse()],
           [sg.Text('サンプリング周波数[us]'), sg.InputText(key='-SETTS-', enable_events=True, disabled=True), sg.Button('Run', key='-RUN-', disabled=True)],
           [sg.Button('Display',key='-display-',disabled=True), sg.Cancel('Close',key='Cancel')],
-          [sg.Table([[0,0], [0,0]], ['Time', 'Data'], num_rows=18, ), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
+          [sg.Table([[0, 0], [0, 0]], ['Time', 'Data'], num_rows=18), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
+          [sg.Button('CSVで保存', disabled=True, key='-saveCSV-')],
          ]
 
 window = sg.Window('Window Title', layout, size=(1000,600), return_keyboard_events=True)
@@ -92,17 +98,13 @@ while True:
 
     elif event == '-display-':
         simpleSin.refreshTimeData()
-        print('finish:refreshTimeData\nbegin:makeWaveFig')
         simpleSin.makeWaveFig()
-        print('finish:makeWaveFig\nbegin:runFFT')
         simpleSin.runFFT()
-        print('finish:runFFT\nbegin:refreshFreqData')
         simpleSin.refreshFreqData()
-        print('finish:refreshFreqData\nbegin:makeFreqFig')
         simpleSin.makeFreqFig()
-        print('finish:makeFreqFig')
         window['-waveCanvas-'].update(data=simpleSin.drawWaveFig())
         window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+        window.find_element('-saveCSV-').Update(disabled=False)
     
     elif event == '-FILEPATH-':
         print(values['-FILEPATH-'])
@@ -121,9 +123,19 @@ while True:
     elif event == '-freqRange-':
         window.find_element('-reloadFreqRange-').Update(disabled=False)
 
+    elif event == '-ampRange-':
+        window.find_element('-reloadAmpRange-').Update(disabled=False)
+
     elif event == '-reloadFreqRange-':
         simpleSin.freqAx.set_xlim(0, int(values['-freqRange-']))
         window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+
+    elif event == '-reloadAmpRange-':
+        simpleSin.freqAx.set_ylim(0, int(values['-ampRange-']))
+        window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+
+    elif event == '-saveCSV-':
+        simpleSin.exportCSV()
 
 
 window.close()
