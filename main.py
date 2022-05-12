@@ -1,59 +1,88 @@
-import os,shutil,locale,json,io
+import os,shutil,locale,json,io,csv
 import numpy as np
 import matplotlib.pyplot as plt
 import PySimpleGUI as sg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import pyfftw
+import matplotlib.ticker as ptick
+from matplotlib.ticker import ScalarFormatter
 
 freq = 5
 
-def make_data_fig(data, type):
+class data:
+    dataLen = 0
+    samplingTime = 0.0
 
-    fig = plt.figure(figsize=(4,3))
-    # x = np.linspace(0, 2*np.pi, 500)
-    x = np.arange(0, len(data))
-    ax = fig.add_subplot(111)
-    if type == 'Time':
-        ax.plot(x, data, marker='.')
-        ax.set_xlim(0,len(data))
-    else:
-        ax.plot(x, data, marker='.')
-        ax.set_xlim(0,len(data)/2)
-    return fig
+    def __init__(self, dataFilePath):
+        self.waveData = np.loadtxt(dataFilePath, encoding='utf_8_sig')
+        self.dataLen = len(self.waveData)
 
-def draw_plot_image(fig):
-    item = io.BytesIO()
-    plt.savefig(item, format='png')
-    plt.clf()
-    # plt.close('all')
-    return item.getvalue()
+    def refreshTimeData(self):
+        self.timeData = [self.samplingTime * i for i in range(self.dataLen)]
+
+    def refreshFreqData(self):
+        #self.ordeData = [self.samplingTime * i for i in range(self.dataLen)]
+        self.freqData = [1.0/self.samplingTime/self.dataLen * i for i in range(self.dataLen)]
+
+    def makeWaveFig(self):
+        self.waveFig = plt.figure(dpi=100, figsize=(4, 3))
+        self.waveFig.subplots_adjust(top=0.98, right=0.98, bottom=0.15)
+        self.waveAx = self.waveFig.add_subplot(111)
+        #self.waveAx.plot(self.timeData, self.waveData, marker='.')
+        self.waveAx.plot(self.timeData, self.waveData, marker='.')
+        self.waveAx.set_xlim(0, self.dataLen * self.samplingTime)
+        self.waveAx.xaxis.set_major_locator(ptick.MaxNLocator(5))
+        self.waveAx.xaxis.set_major_formatter(ptick.ScalarFormatter(useMathText=True))
+        self.waveAx.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
+
+    def makeFreqFig(self):
+        self.freqFig = plt.figure(dpi=100, figsize=(4, 3))
+        self.freqFig.subplots_adjust(top=0.98, right=0.98, bottom=0.15)
+        self.freqAx = self.freqFig.add_subplot(111)
+        self.freqAx.xaxis.set_major_locator(ptick.MaxNLocator(5))
+        self.freqAx.set_xlim(0, (self.dataLen) / 2.0)
+        self.freqAx.bar(self.freqData, self.freqDataAbs)
+
+    def drawWaveFig(self):
+        if window['-waveCanvas-'].TKCanvas.children:
+            for child in window['-waveCanvas-'].TKCanvas.winfo_children():
+                child.destroy()
+        figureCanvasAgg = FigureCanvasTkAgg(self.waveFig, master=window['-waveCanvas-'].TKCanvas)
+        figureCanvasAgg.draw()
+        figureCanvasAgg.get_tk_widget().pack(side='left', fill='both', expand=2)
+
+    def drawFreqFig(self):
+        if window['-freqCanvas-'].TKCanvas.children:
+            for child in window['-freqCanvas-'].TKCanvas.winfo_children():
+                child.destroy()
+        figureCanvasAgg = FigureCanvasTkAgg(self.freqFig, master=window['-freqCanvas-'].TKCanvas)
+        figureCanvasAgg.draw()
+        figureCanvasAgg.get_tk_widget().pack(side='left', fill='both', expand=2)
+
+    def runFFT(self):
+        a = pyfftw.empty_aligned(self.dataLen, dtype='complex128', n=16)
+        #変数に値を代入
+        a[:] = self.waveData
+        b  = pyfftw.interfaces.numpy_fft.fft(a)
+        self.compFreqData = np.fft.fft(a)
+        self.freqDataAbs = np.abs(self.compFreqData)/(self.dataLen/2.0)
+        self.freqDataAng = np.angle(self.compFreqData, deg=True)
+
 
 sg.theme('Light Blue 2')
 
-a = pyfftw.empty_aligned(128, dtype='complex128', n=16)
-a[:] = [np.sin(freq*np.pi*2*i/128)+np.sin(freq*3*np.pi*2*i/128) for i in range(128)]
-b = pyfftw.interfaces.numpy_fft.fft(a)
-c = np.fft.fft(a)
-np.allclose(b, c)
-
-var = [[x + 9 * y for x in range (9)] for y in range (10)]
-name = [chr(65+x) for x in range (9)]
-aDis = [[0 for i in range(2)] for j in range(len(a))]
-
-for i in range(len(a)):
-    aDis[i][0] = i
-    aDis[i][1] = round(a.real[i], 2)
-
-frameTime = [[sg.Image(filename='', key='-imageTime-', size=(400,300))]]
-frameFreq = [[sg.Image(filename='', key='-imageFreq-', size=(400,300))]]
+#frameTime = [[sg.Image(filename='', key='-imageTime-', size=(400, 300))]]
+frameTime = [[sg.Canvas(key='-waveCanvas-', size=(400, 300))]]
+frameFreq = [[sg.Canvas(key='-freqCanvas-', size=(400, 300))],[sg.InputText(key='-freqRange-', enable_events=True, justification='right'), sg.Button('Apply', key='-reloadFreqRange-', disabled=True)]]
 
 layout = [[sg.Text('My one-shot window.')],
-          [sg.Text("ファイル選択"), sg.InputText(), sg.FileBrowse(key="-FILES-")],
-          [sg.Text('入力欄'), sg.In(key='-IN-'), sg.Button('Read', key='-ok-')],
-          [sg.Button('Display',key='-display-'), sg.Cancel('Close',key='Cancel')],
-          [sg.Table(aDis, ['Time', 'Data'], num_rows=25), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
+          [sg.Text("ファイル選択"), sg.InputText(key="-FILEPATH-", enable_events=True), sg.FileBrowse()],
+          [sg.Text('サンプリング周波数[us]'), sg.InputText(key='-SETTS-', enable_events=True, disabled=True), sg.Button('Run', key='-RUN-', disabled=True)],
+          [sg.Button('Display',key='-display-',disabled=True), sg.Cancel('Close',key='Cancel')],
+          [sg.Table([[1,2,3], [1,2,3]], ['Time', 'Data'], num_rows=18), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
          ]
 
-window = sg.Window('Window Title', layout, size=(1200,800))
+window = sg.Window('Window Title', layout, size=(1000,600), return_keyboard_events=True)
 
 while True:
     event, values = window.read()
@@ -62,17 +91,35 @@ while True:
         break
 
     elif event == '-display-':
-        figTime = make_data_fig(a.real, 'Time')
-        figTimeBytes = draw_plot_image(figTime)
-        figFreq = make_data_fig(np.abs(b), 'Freq')
-        figFreqBytes = draw_plot_image(figFreq)
-        window['-imageTime-'].update(data=figTimeBytes)
-        window['-imageFreq-'].update(data=figFreqBytes)
-    
-    elif event == '-ok-':
-        print(values['-IN-'].split)
+        simpleSin.refreshTimeData()
+        simpleSin.makeWaveFig()
+        simpleSin.runFFT()
+        simpleSin.refreshFreqData()
+        simpleSin.makeFreqFig()
 
-    elif event == '-FILES-':
-        print(values['-FILES-'])
+        window['-waveCanvas-'].update(data=simpleSin.drawWaveFig())
+        window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+    
+    elif event == '-FILEPATH-':
+        print(values['-FILEPATH-'])
+        simpleSin = data(values['-FILEPATH-'])
+        window.find_element('-SETTS-').Update(disabled=False)
+
+    elif event == '-SETTS-':
+        simpleSin.samplingTime = values['-SETTS-']
+        window.find_element('-RUN-').Update(disabled=False)
+    
+    elif event == '-RUN-':
+        simpleSin.samplingTime = float(values['-SETTS-'])*1e-6
+        window.find_element('-display-').Update(disabled=False)
+        simpleSin.refreshTimeData()
+    
+    elif event == '-freqRange-':
+        simpleSin.freqAx.set_xlim(0, int(values['-freqRange-']))
+        window.find_element('-reloadFreqRange-').Update(disabled=False)
+
+    elif event == '-reloadFreqRange-':
+        window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+
 
 window.close()
