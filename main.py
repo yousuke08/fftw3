@@ -123,11 +123,11 @@ while True:
         window.find_element('-reloadAmpRange-').Update(disabled=False)
 
     elif event == '-reloadFreqRange-':
-        simpleSin.freqAx.set_xlim(0, int(values['-freqRange-']))
+        simpleSin.freqAx.set_xlim(0, float(values['-freqRange-']))
         window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
 
     elif event == '-reloadAmpRange-':
-        simpleSin.freqAx.set_ylim(0, int(values['-ampRange-']))
+        simpleSin.freqAx.set_ylim(0, float(values['-ampRange-']))
         window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
 
     elif event == '-saveCSV-':
