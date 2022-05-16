@@ -83,28 +83,17 @@ frameFreq = [[sg.Canvas(key='-freqCanvas-', size=(400, 300))],[sg.Text('表示�
 layout = [[sg.Text('Ver_0.1', justification='right')],
           [sg.Text("ファイル選択"), sg.InputText(key="-FILEPATH-", enable_events=True), sg.FileBrowse()],
           [sg.Text('サンプリング周波数[us]'), sg.InputText(key='-SETTS-', enable_events=True, disabled=True), sg.Button('Run', key='-RUN-', disabled=True)],
-          [sg.Button('Display',key='-display-',disabled=True), sg.Cancel('Close',key='Cancel')],
           [sg.Table([[0, 0], [0, 0]], ['Time', 'Data'], num_rows=18), sg.Frame(title='Waveform', layout=frameTime, border_width=7), sg.Frame(title='FFT', layout=frameFreq, border_width=7)],
-          [sg.Button('CSVで保存', disabled=True, key='-saveCSV-')],
+          [sg.Button('CSVで保存', disabled=True, key='-saveCSV-'), sg.Cancel('Close',key='Cancel')],
          ]
 
-window = sg.Window('Window Title', layout, size=(1000,600), return_keyboard_events=True)
+window = sg.Window('FFT', layout, size=(1000,600), return_keyboard_events=True)
 
 while True:
     event, values = window.read()
 
     if event in (None, 'Cancel'):
         break
-
-    elif event == '-display-':
-        simpleSin.refreshTimeData()
-        simpleSin.makeWaveFig()
-        simpleSin.runFFT()
-        simpleSin.refreshFreqData()
-        simpleSin.makeFreqFig()
-        window['-waveCanvas-'].update(data=simpleSin.drawWaveFig())
-        window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
-        window.find_element('-saveCSV-').Update(disabled=False)
     
     elif event == '-FILEPATH-':
         print(values['-FILEPATH-'])
@@ -117,8 +106,15 @@ while True:
     
     elif event == '-RUN-':
         simpleSin.samplingTime = float(values['-SETTS-'])*1e-6
-        window.find_element('-display-').Update(disabled=False)
         simpleSin.refreshTimeData()
+        simpleSin.refreshTimeData()
+        simpleSin.makeWaveFig()
+        simpleSin.runFFT()
+        simpleSin.refreshFreqData()
+        simpleSin.makeFreqFig()
+        window['-waveCanvas-'].update(data=simpleSin.drawWaveFig())
+        window['-freqCanvas-'].update(data=simpleSin.drawFreqFig())
+        window.find_element('-saveCSV-').Update(disabled=False)
     
     elif event == '-freqRange-':
         window.find_element('-reloadFreqRange-').Update(disabled=False)
