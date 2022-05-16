@@ -90,4 +90,9 @@ dkms.conf
 .history
 .ionide
 
+### pyinstaller
+build/
+dist/
+*.spec
+
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,c,c++
